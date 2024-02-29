@@ -1,0 +1,6 @@
+.DS_Store
+.dockerignore
+.gitignore
+.pre-commit-config.yaml
+.git
+.github

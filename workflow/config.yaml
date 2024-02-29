@@ -1,0 +1,18 @@
+__use_yte__: true
+
+__variables__:
+  scientific_name:
+    human: Homo_sapiens
+    mouse: Mus_musculus
+
+species: human
+species_scientific_name: ?scientific_name[this["species"]]
+genome:
+  url: "https://ftp.ensembl.org/pub/release-87/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa.gz"
+  local: "resources/hg38.fasta.gz"
+
+scan_region:
+  upstream: 1
+  downstream: 500
+
+dna2rna: False

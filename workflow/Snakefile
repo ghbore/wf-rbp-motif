@@ -1,0 +1,93 @@
+import platform
+
+
+configfile: "config.yaml"
+
+
+rule merge_bed:
+    input:
+        "results/{name}.bed",
+    output:
+        "results/{name}.merged.bed",
+    script:
+        "scripts/mergebed.py"
+
+
+rule download_genome:
+    output:
+        config["genome"].get("local", "resources/genome.fasta.gz"),
+    params:
+        url=config["genome"]["url"],
+    shell:
+        """
+        curl --progress-bar -o {output} {params.url}
+        """
+
+
+rule retrieve_seq:
+    input:
+        "results/{name}.merged.bed",
+        config["genome"].get("local", "resources/genome.fasta.gz"),
+    output:
+        "results/{name}.fasta",
+    params:
+        upstream=config["scan_region"].get("upstream", 1),
+        downstream=config["scan_region"].get("downstream", 500),
+    script:
+        "scripts/retseq.py"
+
+
+if platform.system() == "Darwin":
+
+    rule run_xstreme_Darwin:
+        input:
+            "results/{name}.fasta",
+        output:
+            directory("results/xstreme/{name,[^/]+}/"),
+        params:
+            dna2rna=config.get("dna2rna", False),
+            db=config.get(
+                "db",
+                "/opt/meme/share/meme-5.5.5/db/motif_databases/RNA/Ray2013_rbp_"
+                + config.get("species_scientific_name", "Homo_sapiens")
+                + (".meme" if config.get("dna2rna", False) else ".dna_encoded.meme"),
+            ),
+        shell:
+            """
+            docker run --rm --user $(id -u):$(id -g) \
+                -v $PWD:$PWD -w $PWD \
+                memesuite/memesuite:latest \
+                xstreme \
+                    --p {input} \
+                    --oc {output} \
+                    $(test "{params.dna2rna}" == "True" && echo "--dna2rna") \
+                    --seed 1 \
+                    --m {params.db}
+            """
+
+else:
+
+    rule run_xstreme:
+        input:
+            "results/{name}.fasta",
+        output:
+            directory("results/xstreme/{name,[^/]+}/"),
+        params:
+            dna2rna=config.get("dna2rna", False),
+            db=config.get(
+                "db",
+                "/opt/meme/share/meme-5.5.5/db/motif_databases/RNA/Ray2013_rbp_"
+                + config.get("species_scientific_name", "Homo_sapiens")
+                + (".meme" if config.get("dna2rna", False) else ".dna_encoded.meme"),
+            ),
+        container:
+            "docker://memesuite/memesuite:latest"
+        shell:
+            """
+            xstreme \
+                --p {input} \
+                --oc {output} \
+                $(test "{params.dna2rna}" == "True" && echo "--dna2rna") \
+                --seed 1 \
+                --m {params.db}
+            """
