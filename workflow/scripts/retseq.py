@@ -42,7 +42,13 @@ def retseq(bed4, reference, upstream=1, downstream=500):
                         upstream - 1,
                     ]
                 name_galaxy_style = "_".join(
-                    [record.id, str(start), str(end), reg_in_chr.loc[i, "strand"]]
+                    [
+                        "ref",
+                        record.id,
+                        str(start),
+                        str(end),
+                        reg_in_chr.loc[i, "strand"],
+                    ]
                 )
                 seq = record[start:end]
                 seq.id = name_galaxy_style
