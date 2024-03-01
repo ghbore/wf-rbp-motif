@@ -21,6 +21,7 @@ def retseq(bed4, reference, upstream=1, downstream=500):
     """
     reg = (
         pd.read_table(bed4, header=None, names=["chr", "start", "end", "strand"])
+        .astype({"chr": str, "start": int, "end": int, "strand": str})
         .loc[lambda x: x["strand"].eq("+") | x["strand"].eq("-")]
         .drop_duplicates()
     )
