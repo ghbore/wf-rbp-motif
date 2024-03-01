@@ -2,7 +2,7 @@ FROM mambaorg/micromamba as conda
 
 ARG CONDA_HOME=/opt/conda
 ARG ENVIRON_NAME=workflow
-ARG WF_HOME=/opt/wf
+ARG WF_HOME=/wf
 
 RUN micromamba create -y \
     -c conda-forge -c bioconda \
@@ -19,7 +19,7 @@ FROM memesuite/memesuite:5.5.5
 
 ARG CONDA_HOME=/opt/conda
 ARG ENVIRON_NAME=workflow
-ARG WF_HOME=/opt/wf
+ARG WF_HOME=/wf
 
 COPY . ${WF_HOME}
 COPY --from=conda ${CONDA_HOME}/envs/${ENVIRON_NAME} ${CONDA_HOME}/envs/${ENVIRON_NAME}
