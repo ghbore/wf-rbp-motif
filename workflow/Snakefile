@@ -1,7 +1,41 @@
 import platform
 
 
-configfile: "config.yaml"
+# Make the "configfile" parameter optional,
+# allowing the workflow to be triggered solely with CLI parameters
+def recursetdefault(self: dict, defaults: dict) -> None:
+    for key, val in defaults.items():
+        if key not in self:
+            self[key] = val
+        elif isinstance(self[key], dict) and isinstance(val, dict):
+            recursetdefault(self[key], val)
+
+
+default_config = {
+    "species": "human",
+    "genome": {
+        "url": "__placeholder__",
+        "local": "resources/genome.fasta.gz",
+    },
+    "scan_region": {
+        "upstream": 1,
+        "downstream": 500,
+    },
+    "dna2rna": False,
+}
+
+recursetdefault(config, default_config)
+
+config["species_scientific_name"] = {
+    "human": "Homo_sapiens",
+    "mouse": "Mus_musculus",
+}[config["species"]]
+
+
+# make this module callable directly
+rule all:
+    input:
+        "results/xstreme/{name}/",
 
 
 rule merge_bed:
@@ -9,6 +43,8 @@ rule merge_bed:
         "results/{name}.bed",
     output:
         "results/{name}.merged.bed",
+    container:
+        "docker://ghcr.io/ghbore/wf-rbp-motif:latest"
     script:
         "scripts/mergebed.py"
 
@@ -33,6 +69,8 @@ rule retrieve_seq:
     params:
         upstream=config["scan_region"].get("upstream", 1),
         downstream=config["scan_region"].get("downstream", 500),
+    container:
+        "docker://ghcr.io/ghbore/wf-rbp-motif:latest"
     script:
         "scripts/retseq.py"
 
