@@ -100,6 +100,7 @@ if platform.system() == "Darwin":
                     --oc {output} \
                     $(test "{params.dna2rna}" == "True" && echo "--dna2rna") \
                     --seed 1 \
+                    --no-pgc \
                     --m {params.db}
             """
 
@@ -127,5 +128,6 @@ else:
                 --oc {output} \
                 $(test "{params.dna2rna}" == "True" && echo "--dna2rna") \
                 --seed 1 \
+                --no-pgc \
                 --m {params.db}
             """

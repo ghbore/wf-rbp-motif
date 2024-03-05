@@ -103,6 +103,7 @@ task run_xstreme {
             --oc report \
             ~{if dna2rna then "--dna2rna" else ""} \
             --seed 1 \
+            --no-pgc \
             --m ~{db}
     >>>
     output {
