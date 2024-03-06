@@ -31,14 +31,15 @@ def retseq(bed4, reference, upstream=1, downstream=500):
             reg_in_chr = reg.loc[reg["chr"].eq(record.id)].reset_index(drop=True)
             cache = [None] * reg_in_chr.shape[0]
             for i in reg_in_chr.index:
+                # 5' splicing site is adjacent to 3' end of the exon
                 if reg_in_chr.loc[i, "strand"] == "+":
-                    start, end = reg_in_chr.loc[i, ["start", "start"]] + [
+                    start, end = reg_in_chr.loc[i, ["end", "end"]] + [
                         upstream - 1,
                         downstream,
                     ]
                     seq = record[start:end]
                 else:
-                    start, end = reg_in_chr.loc[i, ["end", "end"]] - [
+                    start, end = reg_in_chr.loc[i, ["start", "start"]] - [
                         downstream,
                         upstream - 1,
                     ]
