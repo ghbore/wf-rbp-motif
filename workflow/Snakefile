@@ -18,8 +18,8 @@ default_config = {
         "local": "resources/genome.fasta.gz",
     },
     "scan_region": {
-        "upstream": 1,
-        "downstream": 500,
+        "upstream": [0, 0],
+        "downstream": [1, 500],
     },
     "background": "",
     "dna2rna": False,
@@ -39,11 +39,25 @@ rule all:
         "results/xstreme/{name}/",
 
 
+rule define_scan_region:
+    input:
+        lambda wildcards: config.get("exon", "results/" + wildcards.name + ".bed"),
+    output:
+        "results/{name}.scan_region.bed",
+    params:
+        upstream=config["scan_region"].get("upstream", [0, 0]),
+        downstream=config["scan_region"].get("downstream", [1, 500]),
+    container:
+        "docker://ghcr.io/ghbore/wf-rbp-motif:latest"
+    script:
+        "scripts/scanregion.py"
+
+
 rule merge_bed:
     input:
-        "results/{name}.bed",
+        "results/{name}.scan_region.bed",
     output:
-        "results/{name}.merged.bed",
+        "results/{name}.scan_region.merged.bed",
     container:
         "docker://ghcr.io/ghbore/wf-rbp-motif:latest"
     script:
@@ -63,13 +77,10 @@ rule download_genome:
 
 rule retrieve_seq:
     input:
-        "results/{name}.merged.bed",
+        "results/{name}.scan_region.merged.bed",
         config["genome"].get("local", "resources/genome.fasta.gz"),
     output:
-        "results/{name}.fasta",
-    params:
-        upstream=config["scan_region"].get("upstream", 1),
-        downstream=config["scan_region"].get("downstream", 500),
+        "results/{name}.scan_region.fasta",
     container:
         "docker://ghcr.io/ghbore/wf-rbp-motif:latest"
     script:
@@ -80,7 +91,7 @@ if platform.system() == "Darwin":
 
     rule run_xstreme_Darwin:
         input:
-            "results/{name}.fasta",
+            "results/{name}.scan_region.fasta",
         output:
             directory("results/xstreme/{name,[^/]+}/"),
         params:
@@ -111,7 +122,7 @@ else:
 
     rule run_xstreme:
         input:
-            "results/{name}.fasta",
+            "results/{name}.scan_region.fasta",
         output:
             directory("results/xstreme/{name,[^/]+}/"),
         params:

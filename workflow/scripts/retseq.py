@@ -7,21 +7,24 @@ import gzip
 import click
 
 
-def retseq(bed4, reference, upstream=1, downstream=500):
+def retseq(bed4: str, reference: str) -> None:
     """
     Retrieve sequences from reference fasta based on BED regions
 
     Args:
         bed4 (File): BED (4 columns: chr, start, end, strand) region
         reference (File): Reference fasta file
-
-    Options:
-        upstream (Int): # of bases extended to the upstream
-        downstream (Int): # of bases extended to the downstream
     """
     reg = (
         pd.read_table(bed4, header=None, names=["chr", "start", "end", "strand"])
-        .astype({"chr": str, "start": int, "end": int, "strand": str})
+        .astype(
+            {
+                "chr": str,  # Important. Some chr looks like int
+                "start": int,
+                "end": int,
+                "strand": str,
+            }
+        )
         .loc[lambda x: x["strand"].eq("+") | x["strand"].eq("-")]
         .drop_duplicates()
     )
@@ -31,28 +34,15 @@ def retseq(bed4, reference, upstream=1, downstream=500):
             reg_in_chr = reg.loc[reg["chr"].eq(record.id)].reset_index(drop=True)
             cache = [None] * reg_in_chr.shape[0]
             for i in reg_in_chr.index:
-                # 5' splicing site is adjacent to 3' end of the exon
-                if reg_in_chr.loc[i, "strand"] == "+":
-                    start, end = reg_in_chr.loc[i, ["end", "end"]] + [
-                        upstream - 1,
-                        downstream,
-                    ]
-                    seq = record[start:end]
-                else:
-                    start, end = reg_in_chr.loc[i, ["start", "start"]] - [
-                        downstream,
-                        upstream - 1,
-                    ]
-                    seq = record[start:end].reverse_complement()
-                name_galaxy_style = "_".join(
-                    [
-                        "ref",
-                        record.id,
-                        str(start),
-                        str(end),
-                        reg_in_chr.loc[i, "strand"],
-                    ]
-                )
+                start, end, strand = reg_in_chr.loc[i, ["start", "start", "strand"]]
+                if start < 0:
+                    start = 0
+                if end > len(record):
+                    end = len(record)
+                seq = record[start:end]
+                if reg_in_chr.loc[i, "strand"] == "-":
+                    seq = seq.reverse_complement()
+                name_galaxy_style = "_".join(["ref", record.id, start, end, strand])
                 seq.id = name_galaxy_style
                 seq.name = name_galaxy_style
                 seq.description = ""
@@ -61,22 +51,18 @@ def retseq(bed4, reference, upstream=1, downstream=500):
 
 
 @click.command()
-@click.option("--upstream", "-u", default=1)
-@click.option("--downstream", "-d", default=500)
 @click.argument("bed4")
 @click.argument("reference")
-def cli(bed4, reference, upstream, downstream):
-    retseq(bed4, reference, upstream, downstream)
+def cli(bed4, reference):
+    retseq(bed4, reference)
 
 
 if __name__ == "__main__":
     try:
         bed4 = snakemake.input[0]
         reference = snakemake.input[1]
-        upstream = snakemake.params["upstream"]
-        downstream = snakemake.params["downstream"]
         out_fasta = snakemake.output[0]
         with open(out_fasta, "w") as sys.stdout:
-            retseq(bed4, reference, upstream, downstream)
+            retseq(bed4, reference)
     except NameError:
         cli()
