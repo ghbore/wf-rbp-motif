@@ -85,6 +85,7 @@ task run_xstreme {
     input {
         File sequence
         File? custom_db
+        File? background
         Boolean dna2rna = false
         String species_scientific_name = "Homo_sapiens"
         String docker = "memesuite/memesuite:5.5.5"
@@ -102,6 +103,7 @@ task run_xstreme {
             --p ~{sequence} \
             --oc report \
             ~{if dna2rna then "--dna2rna" else ""} \
+            ~{"--n " + background} \
             --seed 1 \
             --no-pgc \
             --m ~{db}
@@ -126,6 +128,7 @@ workflow RBP_Motif_Analysis {
         Int upstream = 1
         Int downstream = 500
         File? custom_motif_db
+        File? background
         Boolean dna2rna = false
         String wf_docker = "ghcr.io/ghbore/wf-rbp-motif:latest"
         String mergebed_docker = "ghcr.io/ghbore/wf-rbp-motif:latest"
@@ -157,6 +160,7 @@ workflow RBP_Motif_Analysis {
         input:
             sequence = retrieve_seq.sequence,
             custom_db = custom_motif_db,
+            background = background,
             dna2rna = dna2rna,
             species_scientific_name = species_scientific_name,
             docker = meme_docker
