@@ -6,6 +6,15 @@ import click
 
 
 def merge1(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Merge the overlaped ranges
+
+    Args:
+        df (pd.DataFrame): A list of ranges (DataFrame with `start` and `end`)
+
+    Returns:
+        pd.DataFrame: A list of merged ranges (DataFrame with `start` and `end`)
+    """
     df = df[df["end"] > df["start"]]
     pos = (
         pd.concat(
@@ -36,6 +45,12 @@ def merge1(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def mergebed(bed6: str) -> None:
+    """
+    Merge the overlaped regions in BED6 to BED4
+
+    Args:
+        bed6 (str): A BED6 file
+    """
     pd.read_table(bed6 if bed6 is not None else sys.stdin, header=None).iloc[
         :, :6
     ].set_axis(

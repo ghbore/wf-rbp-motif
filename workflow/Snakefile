@@ -21,29 +21,47 @@ default_config = {
         "upstream": [0, 0],
         "downstream": [1, 500],
     },
-    "background": "",
+    "db": "",  # if empty use internal RBP motif
+    "background": "",  # if empty use shuffled sequences
     "dna2rna": False,
+}
+# a way to change the I/O path pattern, though not elegant enough
+advanced_default_config = {
+    "exon": "{prefix}.bed",  # input
+    "report": "results/xstreme/{prefix}",  # output
 }
 
 recursetdefault(config, default_config)
+recursetdefault(config, advanced_default_config)
 
+# infer the independent parameters
 config["species_scientific_name"] = {
     "human": "Homo_sapiens",
     "mouse": "Mus_musculus",
 }[config["species"]]
 
+if not config["db"]:
+    config["db"] = (
+        "/opt/meme/share/meme-5.5.5/db/motif_databases/RNA/Ray2013_rbp_"
+        + config.get("species_scientific_name")
+        + (".meme" if config.get("dna2rna") else ".dna_encoded.meme")
+    )
 
-# make this module callable directly
+
+wildcard_constraints:
+    prefix="[^/]+",
+
+
 rule all:
     input:
-        "results/xstreme/{name}/",
+        config["report"],
 
 
 rule define_scan_region:
     input:
-        lambda wildcards: config.get("exon", "results/" + wildcards.name + ".bed"),
+        config["exon"],
     output:
-        "results/{name}.scan_region.bed",
+        "results/{prefix}.scan_region.bed",
     params:
         upstream=config["scan_region"].get("upstream", [0, 0]),
         downstream=config["scan_region"].get("downstream", [1, 500]),
@@ -55,9 +73,9 @@ rule define_scan_region:
 
 rule merge_bed:
     input:
-        "results/{name}.scan_region.bed",
+        "results/{prefix}.scan_region.bed",
     output:
-        "results/{name}.scan_region.merged.bed",
+        "results/{prefix}.scan_region.merged.bed",
     container:
         "docker://ghcr.io/ghbore/wf-rbp-motif:latest"
     script:
@@ -66,7 +84,7 @@ rule merge_bed:
 
 rule download_genome:
     output:
-        config["genome"].get("local", "resources/genome.fasta.gz"),
+        config["genome"]["local"],
     params:
         url=config["genome"]["url"],
     shell:
@@ -77,10 +95,10 @@ rule download_genome:
 
 rule retrieve_seq:
     input:
-        "results/{name}.scan_region.merged.bed",
-        config["genome"].get("local", "resources/genome.fasta.gz"),
+        "results/{prefix}.scan_region.merged.bed",
+        config["genome"].get("local"),
     output:
-        "results/{name}.scan_region.fasta",
+        "results/{prefix}.scan_region.fasta",
     container:
         "docker://ghcr.io/ghbore/wf-rbp-motif:latest"
     script:
@@ -91,18 +109,13 @@ if platform.system() == "Darwin":
 
     rule run_xstreme_Darwin:
         input:
-            "results/{name}.scan_region.fasta",
+            "results/{prefix}.scan_region.fasta",
         output:
-            directory("results/xstreme/{name,[^/]+}/"),
+            directory(config["report"]),
         params:
             dna2rna=config.get("dna2rna", False),
-            db=config.get(
-                "db",
-                "/opt/meme/share/meme-5.5.5/db/motif_databases/RNA/Ray2013_rbp_"
-                + config.get("species_scientific_name", "Homo_sapiens")
-                + (".meme" if config.get("dna2rna", False) else ".dna_encoded.meme"),
-            ),
-            background=config.get("background", ""),
+            db=config.get("db"),
+            background=config.get("background"),
         shell:
             """
             docker run --rm --user $(id -u):$(id -g) \
@@ -122,18 +135,13 @@ else:
 
     rule run_xstreme:
         input:
-            "results/{name}.scan_region.fasta",
+            "results/{prefix}.scan_region.fasta",
         output:
-            directory("results/xstreme/{name,[^/]+}/"),
+            directory(config["report"]),
         params:
-            dna2rna=config.get("dna2rna", False),
-            db=config.get(
-                "db",
-                "/opt/meme/share/meme-5.5.5/db/motif_databases/RNA/Ray2013_rbp_"
-                + config.get("species_scientific_name", "Homo_sapiens")
-                + (".meme" if config.get("dna2rna", False) else ".dna_encoded.meme"),
-            ),
-            background=config.get("background", ""),
+            dna2rna=config.get("dna2rna"),
+            db=config.get("db"),
+            background=config.get("background"),
         container:
             "docker://memesuite/memesuite:latest"
         shell:

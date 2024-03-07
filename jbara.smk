@@ -7,9 +7,6 @@ gff_url = "https://ftp.ensembl.org/pub/release-87/gff3/homo_sapiens/Homo_sapiens
 prefix = "Jbara-nature-2023-extfig2a"
 
 
-configfile: "jbara.yaml"
-
-
 rule all:
     input:
         f"results/xstreme/{prefix}/",
@@ -89,7 +86,7 @@ rule add_strand_info:
         rules.extract_target_exons.output,
         gff=ancient(rules.download_gff.output),
     output:
-        f"results/{prefix}.bed",
+        f"{prefix}.bed",
     run:
         df = (
             pd.read_table(input[0])
@@ -122,8 +119,17 @@ rule add_strand_info:
 module meme:
     snakefile:
         github("ghbore/wf-rbp-motif", path="workflow/Snakefile", tag="main")
+        # "workflow/Snakefile"
     config:
-        config
+        {
+            "species": "human",
+            "genome": {
+                "url": "https://ftp.ensembl.org/pub/release-87/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa.gz",
+                "local": "resources/hg38.fasta.gz",
+            },
+            "scan_region": {"downstream": [1, 500]},
+            "dna2rna": True,
+        }
 
 
 use rule * from meme as meme_*

@@ -1,0 +1,35 @@
+#! /usr/bin/env python
+
+import click
+from Bio import SeqIO
+import random
+import sys
+
+
+@click.command()
+@click.option("--chr", multiple=True, type=str)
+@click.option("--size", default=1000000)
+@click.option("--seed", default=1)
+def cli(chr, size, seed):
+    """
+    Sample fixed-length sequences from genome
+    """
+    chr = set(chr)
+    cache = list()
+    random.seed(seed)
+    for record in SeqIO.parse(sys.stdin, "fasta"):
+        print(f"parsing {record.id} ...", file=sys.stderr)
+        if record.id not in chr:
+            continue
+        start = random.randrange(0, len(record) - size)
+        seq = record[start : (start + size)]
+        seq.description = f"{record.id}:{start+1}-{start+size}"
+        cache.append(seq)
+        chr.remove(record.id)
+        if len(chr) == 0:
+            break
+    SeqIO.write(cache, sys.stdout, "fasta")
+
+
+if __name__ == "__main__":
+    cli()

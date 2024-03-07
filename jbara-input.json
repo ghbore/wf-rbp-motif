@@ -1,6 +1,0 @@
-{
-  "RBP_Motif_Analysis.bed6": "results/Jbara-nature-2023-extfig2a.bed",
-  "RBP_Motif_Analysis.species_scientific_name": "Homo_sapiens",
-  "RBP_Motif_Analysis.reference": "resources/hg38.fasta.gz",
-  "RBP_Motif_Analysis.dna2rna": true
-}

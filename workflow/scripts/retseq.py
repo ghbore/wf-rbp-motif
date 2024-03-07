@@ -34,7 +34,7 @@ def retseq(bed4: str, reference: str) -> None:
             reg_in_chr = reg.loc[reg["chr"].eq(record.id)].reset_index(drop=True)
             cache = [None] * reg_in_chr.shape[0]
             for i in reg_in_chr.index:
-                start, end, strand = reg_in_chr.loc[i, ["start", "start", "strand"]]
+                start, end, strand = reg_in_chr.loc[i, ["start", "end", "strand"]]
                 if start < 0:
                     start = 0
                 if end > len(record):
@@ -42,12 +42,18 @@ def retseq(bed4: str, reference: str) -> None:
                 seq = record[start:end]
                 if reg_in_chr.loc[i, "strand"] == "-":
                     seq = seq.reverse_complement()
-                name_galaxy_style = "_".join(["ref", record.id, start, end, strand])
+                name_galaxy_style = "_".join(
+                    ["ref", record.id, str(start), str(end), strand]
+                )
                 seq.id = name_galaxy_style
                 seq.name = name_galaxy_style
                 seq.description = ""
                 cache[i] = seq
             SeqIO.write(cache, sys.stdout, "fasta")
+            # jump out early if no more region left
+            reg = reg.loc[reg["chr"].ne(record.id)]
+            if reg.shape[0] == 0:
+                break
 
 
 @click.command()

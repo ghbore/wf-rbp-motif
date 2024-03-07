@@ -1,9 +1,39 @@
 version development
 
 
+task define_scan_region {
+    meta {
+        description: "Define the motif scan region around exons"
+    }
+    input {
+        File bed6
+        Array[Int] upstream = [0, 0]
+        Array[Int] downstream = [1, 500]
+        String docker = "ghcr.io/ghbore/wf-rbp-motif:latest"
+        Int cpu = 1
+        Int memory = 2
+    }
+    command <<<
+        scanregion.py \
+            --upstream ~{sep=" " upstream} \
+            --downstream ~{sep=" " downstream} \
+            ~{bed6} \
+            > scan_region.bed6
+    >>>
+    output {
+        File region = "scan_region.bed6"
+    }
+    runtime {
+        docker: docker
+        cpu: cpu
+        memory: "~{memory} GB"
+    }
+}
+
+
 task merge_bed {
     meta {
-        description: "merge user-provided BED file"
+        description: "merge scan regions"
     }
     input {
         File bed6
@@ -12,7 +42,7 @@ task merge_bed {
         Int memory = 2
     }
     command <<<
-        mergebed ~{bed6} > merged.bed4
+        mergebed.py ~{bed6} > merged.bed4
     >>>
     output {
         File bed4 = "merged.bed4"
@@ -44,6 +74,7 @@ task download {
     runtime {
         memory: "~{memory} GB"
         cpu: cpu
+        backend: "bare"
     }
 }
 
@@ -55,17 +86,12 @@ task retrieve_seq {
     input {
         File bed4
         File reference
-        Int upstream = 1
-        Int downstream = 500
         String docker = "ghcr.io/ghbore/wf-rbp-motif:latest"
         Int cpu = 1
         Int memory = 10
     }
     command <<<
-        retseq --upstream ~{upstream} \
-            --downstream ~{downstream} \
-            ~{bed4} ~{reference} \
-            > "sequence.fasta"
+        retseq.py ~{bed4} ~{reference} > "sequence.fasta"
     >>>
     output {
         File sequence = "sequence.fasta"
@@ -125,19 +151,25 @@ workflow RBP_Motif_Analysis {
         String species_scientific_name = "Homo_sapiens"
         File? reference
         String? reference_url
-        Int upstream = 1
-        Int downstream = 500
+        Array[Int] upstream = [0, 0]
+        Array[Int] downstream = [1, 500]
         File? custom_motif_db
         File? background
         Boolean dna2rna = false
         String wf_docker = "ghcr.io/ghbore/wf-rbp-motif:latest"
-        String mergebed_docker = "ghcr.io/ghbore/wf-rbp-motif:latest"
         String meme_docker = "ghcr.io/ghbore/wf-rbp-motif:latest"
+    }
+    call define_scan_region {
+        input:
+            bed6 = bed6,
+            upstream = upstream,
+            downstream = downstream,
+            docker = wf_docker
     }
     call merge_bed {
         input:
-            bed6 = bed6,
-            docker = mergebed_docker
+            bed6 = define_scan_region.region,
+            docker = wf_docker
     }
     if (! defined(reference) && defined(reference_url)){
         call download as download_genome {
@@ -152,8 +184,6 @@ workflow RBP_Motif_Analysis {
                 download_genome.filename,
                 reference
             ]),
-            upstream = upstream,
-            downstream = downstream,
             docker = wf_docker
     }
     call run_xstreme {
