@@ -1,4 +1,4 @@
-from . import shell
+from . import shell, docker
 
 
 @shell
@@ -20,7 +20,7 @@ def test_snakemake_update_report_path():
 
 
 @shell
-def test_wdl():
+def test_wdl(docker):
     """
     cd tests/ && \
     miniwdl run -d wdl ../workflow/wf-rbp-motif.wdl \

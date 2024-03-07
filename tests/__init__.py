@@ -1,5 +1,6 @@
 from subprocess import run
 import functools
+import pytest
 
 
 def shell(func):
@@ -9,3 +10,11 @@ def shell(func):
         run(cmd, shell=True)
 
     return wrapper
+
+
+@pytest.fixture(scope="session")
+@shell
+def docker():
+    """
+    docker buildx build -t wf-rbp-motif:dev .
+    """

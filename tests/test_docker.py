@@ -1,8 +1,8 @@
-from . import shell
+from . import shell, docker
 
 
 @shell
-def test_snakemake():
+def test_snakemake(docker):
     """
     docker run --rm \
         -v $PWD:$PWD -w $PWD \
@@ -14,7 +14,7 @@ def test_snakemake():
 
 
 @shell
-def test_wdl():
+def test_wdl(docker):
     """
     cd tests/ && \
     docker run --rm \
