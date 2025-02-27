@@ -9,6 +9,7 @@ def define_scan_region(
     bed6: str,
     upstream: tuple[int, int] = (0, 0),
     downstream: tuple[int, int] = (1, 500),
+    itself: bool = False,
 ) -> pd.DataFrame:
     """
     Define the motif scan region around exons
@@ -21,11 +22,12 @@ def define_scan_region(
         downstream (tuple[int, int], optional):
             downstream extension region to the exon 3' end (adjacent to 5'SS).
             Defaults to (1, 500).
+        itself (bool, optional):
+            whether include the exon sequence itself. Default to False.
     """
     exon = (
-        pd.read_table(
-            bed6, header=None, names=["chr", "start", "end", "name", "score", "strand"]
-        )
+        pd.read_table(bed6, header=None, usecols=range(6))
+        .set_axis(["chr", "start", "end", "name", "score", "strand"], axis=1)
         .astype({"chr": str, "start": int, "end": int, "strand": str})
         .loc[lambda x: x["strand"].eq("+") | x["strand"].eq("-")]
         .drop_duplicates()
@@ -79,22 +81,20 @@ def define_scan_region(
     else:
         downstream_scan_region = None
 
-    assert not (upstream_scan_region is None and downstream_scan_region is None)
+    assert not (
+        upstream_scan_region is None
+        and downstream_scan_region is None
+        and itself is False
+    )
 
-    if upstream_scan_region is None:
-        return downstream_scan_region.sort_values(
-            ["chr", "start", "end", "strand"]
-        ).reset_index(drop=True)
-    elif downstream_scan_region is None:
-        return upstream_scan_region.sort_values(
-            ["chr", "start", "end", "strand"]
-        ).reset_index(drop=True)
-    else:
-        return (
-            pd.concat([upstream_scan_region, downstream_scan_region], ignore_index=True)
-            .sort_values(["chr", "start", "end", "strand"])
-            .reset_index(drop=True)
+    return (
+        pd.concat(
+            [upstream_scan_region, downstream_scan_region, exon if itself else None],
+            ignore_index=True,
         )
+        .sort_values(["chr", "start", "end", "strand"])
+        .reset_index(drop=True)
+    )
 
 
 @click.command()
@@ -112,12 +112,19 @@ def define_scan_region(
     default=(1, 500),
     help="downstream extension region to the exon 3' end (adjacent to 5'SS). Default (1, 500)",
 )
+@click.option(
+    "--itself",
+    "-i",
+    type=bool,
+    default=False,
+    help="whether include the exon sequence itself. Default to False",
+)
 @click.argument("bed6")
-def cli(bed6, upstream, downstream):
+def cli(bed6, upstream, downstream, itself):
     """
     output the motif scan region (BED6) around exons (BED6)
     """
-    define_scan_region(bed6, upstream, downstream).to_csv(
+    define_scan_region(bed6, upstream, downstream, itself).to_csv(
         sys.stdout, sep="\t", header=False, index=False
     )
 
@@ -127,9 +134,10 @@ if __name__ == "__main__":
         bed6 = snakemake.input[0]
         upstream = snakemake.params["upstream"]
         downstream = snakemake.params["downstream"]
+        itself = snakemake.params["itself"]
         out = snakemake.output[0]
         with open(out, "w") as O:
-            define_scan_region(bed6, upstream, downstream).to_csv(
+            define_scan_region(bed6, upstream, downstream, itself).to_csv(
                 O, sep="\t", header=False, index=False
             )
     except NameError:

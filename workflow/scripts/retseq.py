@@ -43,7 +43,7 @@ def retseq(bed4: str, reference: str) -> None:
                 if reg_in_chr.loc[i, "strand"] == "-":
                     seq = seq.reverse_complement()
                 name_galaxy_style = "_".join(
-                    ["ref", record.id, str(start), str(end), strand]
+                    ["ref", record.id, str(start + 1), str(end), strand]
                 )
                 seq.id = name_galaxy_style
                 seq.name = name_galaxy_style

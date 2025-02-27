@@ -17,12 +17,10 @@ default_config = {
         "url": "__placeholder__",
         "local": "resources/genome.fasta.gz",
     },
-    "scan_region": {
-        "upstream": [0, 0],
-        "downstream": [1, 500],
-    },
+    "scan_region": {"upstream": [0, 0], "downstream": [1, 500], "itself": False},
     "db": "",  # if empty use internal RBP motif
     "background": "",  # if empty use shuffled sequences
+    "bfile": "",  # omit if empty
     "dna2rna": False,
 }
 # a way to change the I/O path pattern, though not elegant enough
@@ -61,10 +59,11 @@ rule define_scan_region:
     input:
         config["exon"],
     output:
-        "results/{prefix}.scan_region.bed",
+        "results/scan_region/{prefix}.bed",
     params:
         upstream=config["scan_region"].get("upstream", [0, 0]),
         downstream=config["scan_region"].get("downstream", [1, 500]),
+        itself=config["scan_region"].get("itself", False),
     container:
         "docker://ghcr.io/ghbore/wf-rbp-motif:latest"
     script:
@@ -73,9 +72,9 @@ rule define_scan_region:
 
 rule merge_bed:
     input:
-        "results/{prefix}.scan_region.bed",
+        "results/scan_region/{prefix}.bed",
     output:
-        "results/{prefix}.scan_region.merged.bed",
+        "results/scan_region/{prefix}.merged.bed",
     container:
         "docker://ghcr.io/ghbore/wf-rbp-motif:latest"
     script:
@@ -95,10 +94,10 @@ rule download_genome:
 
 rule retrieve_seq:
     input:
-        "results/{prefix}.scan_region.merged.bed",
+        "results/scan_region/{prefix}.merged.bed",
         config["genome"].get("local"),
     output:
-        "results/{prefix}.scan_region.fasta",
+        "results/scan_region/{prefix}.fasta",
     container:
         "docker://ghcr.io/ghbore/wf-rbp-motif:latest"
     script:
@@ -109,13 +108,14 @@ if platform.system() == "Darwin":
 
     rule run_xstreme_Darwin:
         input:
-            "results/{prefix}.scan_region.fasta",
+            "results/scan_region/{prefix}.fasta",
         output:
             directory(config["report"]),
         params:
             dna2rna=config.get("dna2rna", False),
             db=config.get("db"),
             background=config.get("background"),
+            bfile=config.get("bfile"),
         shell:
             """
             docker run --rm --user $(id -u):$(id -g) \
@@ -126,6 +126,7 @@ if platform.system() == "Darwin":
                     --oc {output} \
                     $(test "{params.dna2rna}" == "True" && echo "--dna2rna") \
                     $(test -n "{params.background}" && test -f "{params.background}" && echo "--n {params.background}") \
+                    $(test -n "{params.bfile}" && test -f "{params.bfile}" && echo "--bfile {params.bfile}") \
                     --seed 1 \
                     --no-pgc \
                     --m {params.db}
@@ -135,13 +136,14 @@ else:
 
     rule run_xstreme:
         input:
-            "results/{prefix}.scan_region.fasta",
+            "results/scan_region/{prefix}.fasta",
         output:
             directory(config["report"]),
         params:
             dna2rna=config.get("dna2rna"),
             db=config.get("db"),
             background=config.get("background"),
+            bfile=config.get("bfile"),
         container:
             "docker://memesuite/memesuite:latest"
         shell:
@@ -151,6 +153,7 @@ else:
                 --oc {output} \
                 $(test "{params.dna2rna}" == "True" && echo "--dna2rna") \
                 $(test -n "{params.background}" && test -f "{params.background}" && echo "--n {params.background}") \
+                $(test -n "{params.bfile}" && test -f "{params.bfile}" && echo "--bfile {params.bfile}") \
                 --seed 1 \
                 --no-pgc \
                 --m {params.db}
